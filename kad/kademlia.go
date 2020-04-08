@@ -2,10 +2,15 @@ package main
 
 import (
 	"DHT/utils"
+	"bytes"
 	"context"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"strings"
 
 	"github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
@@ -36,6 +41,10 @@ func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT
 
 func addPeers(ctx context.Context, peersList []string, h host.Host, kad *dht.IpfsDHT) {
 
+	if len(peersList) == 0 {
+		return
+	}
+
 	for _, addr := range peersList {
 		peerID, peerAddr := utils.MakePeer(addr)
 		h.Peerstore().AddAddr(peerID, peerAddr, peerstore.PermanentAddrTTL)
@@ -47,24 +56,43 @@ func addPeers(ctx context.Context, peersList []string, h host.Host, kad *dht.Ipf
 func main() {
 	ctx := context.Background()
 	port := os.Args[1]
-	addr, err := utils.GenerateMultiAddr(port, "127.0.0.1")
+
+	// contact discovery server
+	conn, err := net.Dial("tcp", os.Args[2])
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to query discovery server", err)
 	}
 
-	kademliaDHT, host := createHost(ctx, addr)
+	ipaddr := conn.LocalAddr().String()
+	ipaddr = ipaddr[:strings.IndexByte(ipaddr, ':')]
+	addr, err := utils.GenerateMultiAddr(port, ipaddr)
 
-	log.Println("host address ", fmt.Sprintf("%s/p2p/%s", addr, host.ID().Pretty()))
+	kad, host := createHost(ctx, addr)
+	hostAddr := fmt.Sprintf("%s/p2p/%s", addr, host.ID().Pretty())
+	log.Println(hostAddr)
 
-	var peerList []string
+	buf := []byte{0x01}
+	payload := []byte(hostAddr)
+	var l uint32
+	l = uint32(len(payload))
 
-	if len(os.Args) < 3 {
-		log.Println("First node in the network")
-	} else {
-		peer := os.Args[2]
-		peerList = append(peerList, peer)
-		addPeers(ctx, peerList, host, kademliaDHT)
-	}
+	b := new(bytes.Buffer)
+	binary.Write(b, binary.LittleEndian, l)
+	buf = append(buf, b.Bytes()...)
+	buf = append(buf, payload...)
+
+	conn.Write(buf)
+
+	resp := make([]byte, 1024)
+	Len, _ := conn.Read(resp)
+
+	// decoding the list of peers
+	var peerAddr []string
+	json.Unmarshal(resp[:Len], &peerAddr)
+
+	log.Println(peerAddr)
+	// connecting with peers
+	addPeers(ctx, peerAddr, host, kad)
 
 	select {}
 }

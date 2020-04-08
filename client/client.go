@@ -3,6 +3,7 @@ package client
 import (
 	"DHT/utils"
 	"context"
+	"math/rand"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -34,7 +35,6 @@ func NewDHTclient(destPeer string) (*dht.IpfsDHT, error) {
 
 	kademliaDHT.Update(ctx, destID)
 	return kademliaDHT, nil
-
 }
 
 // probably include a discovery protocol to discover the nodes in the network for
@@ -50,4 +50,14 @@ func PutValue(kad *dht.IpfsDHT, key string, value []byte) error {
 func GetValue(kad *dht.IpfsDHT, key string) ([]byte, error) {
 	val, err := kad.GetValue(ctx, key)
 	return val, err
+}
+
+// TestFunc tests the DHT network by inserting and retrieving random data
+func TestFunc(kad *dht.IpfsDHT) {
+	randNums := rand.Perm(100)
+
+	for i, n := range randNums {
+
+	}
+
 }
