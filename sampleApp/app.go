@@ -23,7 +23,11 @@ func main() {
 
 	addr := string(resp[:Len])
 
-	kad, err := client.NewDHTclient(addr)
+	log.Println(addr)
+
+	kad, cancel, err := client.NewDHTclient(addr)
+	defer cancel()
+
 	if err != nil {
 		log.Fatal("Failed to intialize DHTclient", err)
 	}
