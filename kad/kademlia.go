@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
@@ -25,6 +26,7 @@ func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT
 	// In the options add the privatekey
 	host, err := libp2p.New(ctx,
 		libp2p.ListenAddrs([]multiaddr.Multiaddr{hostAddr}...),
+		libp2p.Identity(utils.GeneratePrivateKey(time.Now().Unix())),
 	)
 
 	if err != nil {
@@ -48,8 +50,16 @@ func addPeers(ctx context.Context, peersList []string, h host.Host, kad *dht.Ipf
 	for _, addr := range peersList {
 		peerID, peerAddr := utils.MakePeer(addr)
 		h.Peerstore().AddAddr(peerID, peerAddr, peerstore.PermanentAddrTTL)
+		err := kad.Ping(ctx, peerID)
+		if err != nil {
+			log.Println(err)
+		} else {
+			log.Println("peer active")
+		}
 		kad.Update(ctx, peerID)
 	}
+
+	return
 
 }
 

@@ -3,7 +3,9 @@ package utils
 import (
 	"fmt"
 	"log"
+	"math/rand"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -50,4 +52,16 @@ func MakePeer(dest string) (peer.ID, multiaddr.Multiaddr) {
 // GenerateMultiAddr creates a multiaddr from IP and port
 func GenerateMultiAddr(port string, ip string) (multiaddr.Multiaddr, error) {
 	return multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%s", ip, port))
+}
+
+// GeneratePrivateKey - creates a private key with the given seed
+func GeneratePrivateKey(seed int64) crypto.PrivKey {
+	randBytes := rand.New(rand.NewSource(seed))
+	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, randBytes)
+
+	if err != nil {
+		log.Fatalf("Could not generate Private Key: %v", err)
+	}
+
+	return prvKey
 }
