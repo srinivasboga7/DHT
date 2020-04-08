@@ -1,2 +1,2 @@
 # DHT
-A Distributed Hash Table Implementation in Golang
+A Distributed Hash Table forked from libp2p/go-libp2p-kad-dht.
