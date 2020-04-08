@@ -2,8 +2,12 @@ package client
 
 import (
 	"DHT/utils"
+	"bytes"
 	"context"
+	"encoding/binary"
+	"errors"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -53,11 +57,35 @@ func GetValue(kad *dht.IpfsDHT, key string) ([]byte, error) {
 }
 
 // TestFunc tests the DHT network by inserting and retrieving random data
-func TestFunc(kad *dht.IpfsDHT) {
+func TestFunc(kad *dht.IpfsDHT) error {
 	randNums := rand.Perm(100)
 
 	for i, n := range randNums {
+		b := new(bytes.Buffer)
+		binary.Write(b, binary.LittleEndian, n)
+		val := b.Bytes()
+		var key string
+		key = strconv.Itoa(i)
+		PutValue(kad, key, val)
+	}
+
+	for j, m := range randNums {
+		key := strconv.Itoa(j)
+		val, err := GetValue(kad, key)
+
+		if err != nil {
+			return err
+		}
+
+		var p int
+		b := bytes.NewReader(val)
+		binary.Read(b, binary.LittleEndian, &p)
+
+		if m != p {
+			return errors.New("mismatch values")
+		}
 
 	}
 
+	return nil
 }
