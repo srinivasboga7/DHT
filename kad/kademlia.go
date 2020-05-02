@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -21,6 +22,16 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
+type query struct {
+	json_rpc_method string
+	key             string
+	value           []byte
+}
+
+type response struct {
+	val []byte
+}
+
 func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT, host.Host) {
 
 	// In the options add the privatekey
@@ -32,7 +43,6 @@ func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// add the DHT options
 	kad, err := dht.New(ctx, host, dhtopts.Validator(utils.NullValidator{}))
 	if err != nil {
@@ -103,6 +113,28 @@ func main() {
 	log.Println(peerAddr)
 	// connecting with peers
 	addPeers(ctx, peerAddr, host, kad)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		q := query{}
+		err := json.NewDecoder(r.Body).Decode(&q)
+		if err != nil {
+			log.Println(err)
+		}
+		if q.json_rpc_method == "dht_putValue" {
+			kad.PutValue(ctx, q.key, q.value)
+		} else if q.json_rpc_method == "dht_getValue" {
+			val, err := kad.GetValue(ctx, q.key)
+			if err != nil {
+				log.Println(err)
+			}
+			ww := response{}
+			ww.val = val
+			b, _ := json.Marshal(ww)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(b)
+		}
+	})
 
 	select {}
 }
