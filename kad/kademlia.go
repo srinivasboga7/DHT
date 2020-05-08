@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ import (
 type query struct {
 	json_rpc_method string
 	key             string
-	value           []byte
+	value           string
 }
 
 type response struct {
@@ -115,13 +116,13 @@ func main() {
 	addPeers(ctx, peerAddr, host, kad)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		q := query{}
+		var q query
 		err := json.NewDecoder(r.Body).Decode(&q)
 		if err != nil {
 			log.Println(err)
 		}
 		if q.json_rpc_method == "dht_putValue" {
-			kad.PutValue(ctx, q.key, q.value)
+			kad.PutValue(ctx, q.key, []byte(q.value))
 		} else if q.json_rpc_method == "dht_getValue" {
 			val, err := kad.GetValue(ctx, q.key)
 			if err != nil {
@@ -135,6 +136,12 @@ func main() {
 			w.Write(b)
 		}
 	})
+
+	httpPort, _ := strconv.Atoi(port)
+	httpPort++
+	str := strconv.Itoa(httpPort)
+
+	http.ListenAndServe(":"+str, nil)
 
 	select {}
 }
