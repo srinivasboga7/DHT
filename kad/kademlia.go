@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	ds "github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -34,7 +34,7 @@ type response struct {
 	val []byte
 }
 
-func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT, host.Host) {
+func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr, db *badger.Datastore) (*dht.IpfsDHT, host.Host) {
 
 	// In the options add the privatekey
 	host, err := libp2p.New(ctx,
@@ -46,8 +46,8 @@ func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT
 		log.Fatal(err)
 	}
 	// add the DHT options
-	datastore := ds.NewMapDatastore()
-	kad, err := dht.New(ctx, host, dhtopts.Validator(utils.NullValidator{}), dhtopts.Datastore(datastore))
+
+	kad, err := dht.New(ctx, host, dhtopts.Validator(utils.NullValidator{}), dhtopts.Datastore(db))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,12 +85,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to query discovery server", err)
 	}
-
 	ipaddr := conn.LocalAddr().String()
 	ipaddr = ipaddr[:strings.IndexByte(ipaddr, ':')]
 	addr, err := utils.GenerateMultiAddr(port, ipaddr)
 
-	kad, host := createHost(ctx, addr)
+	db, err := badger.NewDatastore("./badgerDB"+port, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kad, host := createHost(ctx, addr, db)
 	hostAddr := fmt.Sprintf("%s/p2p/%s", addr, host.ID().Pretty())
 	log.Println(hostAddr)
 
@@ -120,8 +124,6 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var q query
 		err := json.NewDecoder(r.Body).Decode(&q)
-		log.Print("q ")
-		log.Printf("%+v\n", q)
 		if err != nil {
 			log.Print("error ")
 			log.Println(err)
