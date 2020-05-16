@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -45,7 +46,8 @@ func createHost(ctx context.Context, hostAddr multiaddr.Multiaddr) (*dht.IpfsDHT
 		log.Fatal(err)
 	}
 	// add the DHT options
-	kad, err := dht.New(ctx, host, dhtopts.Validator(utils.NullValidator{}))
+	datastore := ds.NewMapDatastore()
+	kad, err := dht.New(ctx, host, dhtopts.Validator(utils.NullValidator{}), dhtopts.Datastore(datastore))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,20 +119,13 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var q query
-		// log.Print(r.Body)
-		// r.ParseForm()
-		// log.Println(r.Form)
 		err := json.NewDecoder(r.Body).Decode(&q)
 		log.Print("q ")
 		log.Printf("%+v\n", q)
-		// log.Printf("%+v\n", []byte(q.Value))
 		if err != nil {
 			log.Print("error ")
 			log.Println(err)
 		}
-		// r.ParseForm()
-		// log.Print("r ")
-		// log.Print(r.Form)
 		if q.JSONRPCMethod == "dht_putValue" {
 			kad.PutValue(ctx, q.Key, []byte(q.Value))
 		} else if q.JSONRPCMethod == "dht_getValue" {
@@ -140,12 +135,9 @@ func main() {
 			}
 			ww := response{}
 			ww.val = val
-			// b, _ := json.Marshal(ww)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(val)
-			// log.Println("writing value as ")
-			// log.Println(string(val))
 		}
 	})
 
