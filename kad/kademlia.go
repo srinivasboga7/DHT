@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -121,6 +122,11 @@ func main() {
 	// connecting with peers
 	addPeers(ctx, peerAddr, host, kad)
 
+	if os.Args[3] == "disableLogging" {
+		log.SetOutput(ioutil.Discard)
+	}
+
+	// HTTP API endpoint
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var q query
 		err := json.NewDecoder(r.Body).Decode(&q)
@@ -129,8 +135,12 @@ func main() {
 			log.Println(err)
 		}
 		if q.JSONRPCMethod == "dht_putValue" {
+			log.Println("PutValue Request")
+			log.Println(q.JSONRPCMethod, q.Key, string(q.Value))
 			kad.PutValue(ctx, q.Key, []byte(q.Value))
 		} else if q.JSONRPCMethod == "dht_getValue" {
+			log.Println("GetValue Request")
+			log.Println(q.JSONRPCMethod, q.Key)
 			val, err := kad.GetValue(ctx, q.Key)
 			if err != nil {
 				log.Println(err)
@@ -148,6 +158,8 @@ func main() {
 	str := strconv.Itoa(httpPort)
 
 	http.ListenAndServe(":"+str, nil)
+
+	defer db.Close()
 
 	select {}
 }

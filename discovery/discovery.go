@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"time"
 )
 
 type discvServer struct {
@@ -91,6 +92,7 @@ func (srv *discvServer) handleConnection(conn net.Conn) {
 	} else if buf1[0] == 0x02 {
 		var peerAddr string
 		// selecting random peer
+		log.Println("Client Request for DHT node address")
 		srv.mux.Lock()
 		if len(srv.DHTPeers) == 1 {
 			peerAddr = srv.DHTPeers[0]
@@ -128,5 +130,6 @@ func listenForNodes() {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	listenForNodes()
 }
