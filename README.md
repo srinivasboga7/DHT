@@ -18,4 +18,4 @@ Note : Run the discovery server before any of the DHT nodes.\
 kad dir has the code for the DHT node.\
 Building : go build kademlia.go .\
 Running : ./kademlia <port> <discovery Node Address> <logging> . \
-For example : ./kademlia 6666 127.0.0.1:8000 enableLogging , this command runs the node on port 6666 with logging enabled.\
+For example : ./kademlia 6666 127.0.0.1:8000 enableLogging , this command runs the node on port 6666 with logging enabled.
